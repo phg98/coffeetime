@@ -7,6 +7,7 @@ function App() {
     const [alertVisible, setAlertVisible] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [imageUrl, setImageUrl] = useState('');
+    const [imageUpdatedTime, setImageUpdatedTime] = useState(''); // 이미지 업데이트 시간을 저장하는 상태
     const inputRef = useRef(null);
     const { fetchAndSave, loading, error } = useWebContentFetcher();
 
@@ -18,8 +19,10 @@ function App() {
         const fetchImage = async () => {
             try {
                 const response = await fetch('http://localhost:3001/images');
+                const data = await response.json();
                 if (response.ok) {
                     setImageUrl(`http://localhost:3001/static/downloaded_image.jpg?timestamp=${new Date().getTime()}`);
+                    setImageUpdatedTime(data.timestamp); // 서버에서 받은 시간으로 설정
                 } else {
                     console.error('이미지를 가져오는 데 실패했습니다.');
                 }
@@ -90,10 +93,20 @@ function App() {
                 <div>
                     <p>알림: 당신의 커피가 준비되었습니다!</p>
                     <button onClick={handleCloseAlert}>닫기</button>
-                    {imageUrl && <img src={imageUrl} alt="Downloaded" style={{ maxWidth: '100%', height: 'auto' }} />}
+                    {imageUrl && (
+                        <>
+                            <p>이미지 업데이트 시간: {imageUpdatedTime}</p>
+                            <img src={imageUrl} alt="Downloaded" style={{ maxWidth: '100%', height: 'auto' }} />
+                        </>
+                    )}
                 </div>
             )}
-            {imageUrl && <img src={imageUrl} alt="Downloaded" style={{ maxWidth: '100%', height: 'auto' }} />}
+            {imageUrl && (
+                <>
+                    <p>이미지 업데이트 시간: {imageUpdatedTime}</p>
+                    <img src={imageUrl} alt="Downloaded" style={{ maxWidth: '100%', height: 'auto' }} />
+                </>
+            )}
         </form>
     );
 }
