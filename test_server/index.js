@@ -4,6 +4,8 @@ const cors = require('cors');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+// const Tesseract = require('tesseract.js');
+const { createWorker } = require('tesseract.js');
 const app = express();
 
 app.use(cors());
@@ -35,6 +37,24 @@ let browser;
         console.error('Failed to launch browser:', error.message);
     }
 })();
+
+const performOCR = async (imagePath, rectangle) => {
+    try {        
+        const worker = await createWorker('eng');
+        await worker.setParameters({
+            tessedit_char_whitelist: '0123456789',
+        });
+        const { data: { text } } = await worker.recognize(imagePath, 'eng', {
+            // logger: m => console.log(m),
+            // tessedit_char_whitelist: '0123456789',
+            rectangle
+        });
+        return text;
+    } catch (error) {
+        console.error('Failed to perform OCR:', error.message);
+        return null;
+    }
+};
 
 app.get('/images', async (req, res) => {
     const targetUrl = 'https://www.hanwha701.com';
@@ -76,14 +96,19 @@ app.get('/images', async (req, res) => {
             const buffer = await viewSource.buffer();
             const imagePath = path.join(__dirname, 'downloaded_image.jpg');
 
-            fs.writeFile(imagePath, buffer, (err) => {
+            fs.writeFile(imagePath, buffer, async (err) => {
                 if (err) {
                     console.error('Failed to save image:', err);
                     res.status(500).send('Failed to save image');
                 } else {
                     const timestamp = new Date().toLocaleString(); // 이미지 저장 시간
                     console.log('Image saved at:', imagePath);
-                    res.json({ message: 'Image saved successfully', timestamp });
+                    const region = { left: 800, top: 430, width: 500, height: 160 }; // Example region
+                    // for Test
+                    let testImagePath = path.join(__dirname, 'downloaded_image.sample.jpg');
+                    const ocrResult = await performOCR(testImagePath, region);
+                    //const ocrResult = await performOCR(imagePath, region);
+                    res.json({ message: 'Image saved successfully', timestamp, ocrResult });
                 }
             });
         } else {
