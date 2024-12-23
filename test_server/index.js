@@ -4,6 +4,7 @@ const cors = require('cors');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const Tesseract = require('tesseract.js');
 const app = express();
 
 app.use(cors());
@@ -35,6 +36,18 @@ let browser;
         console.error('Failed to launch browser:', error.message);
     }
 })();
+
+const performOCR = async (imagePath) => {
+    try {
+        const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
+            logger: m => console.log(m),
+        });
+        return text;
+    } catch (error) {
+        console.error('Failed to perform OCR:', error.message);
+        return null;
+    }
+};
 
 app.get('/images', async (req, res) => {
     const targetUrl = 'https://www.hanwha701.com';
@@ -76,14 +89,15 @@ app.get('/images', async (req, res) => {
             const buffer = await viewSource.buffer();
             const imagePath = path.join(__dirname, 'downloaded_image.jpg');
 
-            fs.writeFile(imagePath, buffer, (err) => {
+            fs.writeFile(imagePath, buffer, async (err) => {
                 if (err) {
                     console.error('Failed to save image:', err);
                     res.status(500).send('Failed to save image');
                 } else {
                     const timestamp = new Date().toLocaleString(); // 이미지 저장 시간
                     console.log('Image saved at:', imagePath);
-                    res.json({ message: 'Image saved successfully', timestamp });
+                    const ocrResult = await performOCR(imagePath);
+                    res.json({ message: 'Image saved successfully', timestamp, ocrResult });
                 }
             });
         } else {

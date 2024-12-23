@@ -8,6 +8,7 @@ function App() {
     const [inputValue, setInputValue] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [imageUpdatedTime, setImageUpdatedTime] = useState(''); // 이미지 업데이트 시간을 저장하는 상태
+    const [ocrResult, setOcrResult] = useState(''); // OCR 결과를 저장하는 상태
     const inputRef = useRef(null);
     const { fetchAndSave, loading, error } = useWebContentFetcher();
 
@@ -23,6 +24,7 @@ function App() {
                 if (response.ok) {
                     setImageUrl(`http://localhost:3001/static/downloaded_image.jpg?timestamp=${new Date().getTime()}`);
                     setImageUpdatedTime(data.timestamp); // 서버에서 받은 시간으로 설정
+                    setOcrResult(data.ocrResult);
                 } else {
                     console.error('이미지를 가져오는 데 실패했습니다.');
                 }
@@ -54,19 +56,13 @@ function App() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!isNumber(inputValue) || inputValue.length < 2) {
+        if (!isNumber(inputValue)) {
             alert("유효한 대기표 번호를 입력하세요.");
             return;
         }
         setTicketNumber(inputValue);
         setInputValue('');
         inputRef.current.focus();
-
-        try {
-            await fetchAndSave('https://www.testurl.com');
-        } catch (err) {
-            console.error('웹 페이지 저장 실패:', err);
-        }
     };
 
     const handleCloseAlert = () => {
@@ -97,6 +93,7 @@ function App() {
                         <>
                             <p>이미지 업데이트 시간: {imageUpdatedTime}</p>
                             <img src={imageUrl} alt="Downloaded" style={{ maxWidth: '100%', height: 'auto' }} />
+                            <p>추출된 숫자: {ocrResult}</p>
                         </>
                     )}
                 </div>
@@ -105,6 +102,7 @@ function App() {
                 <>
                     <p>이미지 업데이트 시간: {imageUpdatedTime}</p>
                     <img src={imageUrl} alt="Downloaded" style={{ maxWidth: '100%', height: 'auto' }} />
+                    <p>추출된 숫자: {ocrResult}</p>
                 </>
             )}
         </form>
