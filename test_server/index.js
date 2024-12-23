@@ -4,7 +4,8 @@ const cors = require('cors');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const Tesseract = require('tesseract.js');
+// const Tesseract = require('tesseract.js');
+const { createWorker } = require('tesseract.js');
 const app = express();
 
 app.use(cors());
@@ -37,10 +38,16 @@ let browser;
     }
 })();
 
-const performOCR = async (imagePath) => {
-    try {
-        const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
-            logger: m => console.log(m),
+const performOCR = async (imagePath, rectangle) => {
+    try {        
+        const worker = await createWorker('eng');
+        await worker.setParameters({
+            tessedit_char_whitelist: '0123456789',
+        });
+        const { data: { text } } = await worker.recognize(imagePath, 'eng', {
+            // logger: m => console.log(m),
+            // tessedit_char_whitelist: '0123456789',
+            rectangle
         });
         return text;
     } catch (error) {
@@ -96,7 +103,11 @@ app.get('/images', async (req, res) => {
                 } else {
                     const timestamp = new Date().toLocaleString(); // 이미지 저장 시간
                     console.log('Image saved at:', imagePath);
-                    const ocrResult = await performOCR(imagePath);
+                    const region = { left: 800, top: 430, width: 500, height: 160 }; // Example region
+                    // for Test
+                    let testImagePath = path.join(__dirname, 'downloaded_image.sample.jpg');
+                    const ocrResult = await performOCR(testImagePath, region);
+                    //const ocrResult = await performOCR(imagePath, region);
                     res.json({ message: 'Image saved successfully', timestamp, ocrResult });
                 }
             });

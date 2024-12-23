@@ -12,6 +12,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "puppeteer": "^23.11.1"
+    "puppeteer": "^23.11.1",
+    "tesseract.js": "^5.1.1"
   }
 }

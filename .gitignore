@@ -25,3 +25,4 @@ yarn-error.log*
 
 # local files
 /test_server/downloaded_image.jpg
+eng.traineddata
