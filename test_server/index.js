@@ -124,7 +124,7 @@ const getImageScheduler = async () => {
 // 로컬 testimages 디렉터리에서 랜덤하게 이미지 파일을 선택하여 OCR을 수행
 const getLocalTestImage = async () => {
     try {
-        const imagesDir = path.join(__dirname, '..', 'testimages'); // 상위 디렉터리에 위치한 testimages 폴더
+        const imagesDir = path.join(__dirname, 'testimages'); // 상위 디렉터리에 위치한 testimages 폴더
         const files = fs.readdirSync(imagesDir);
         const randomFile = files[Math.floor(Math.random() * files.length)];
         const imagePath = path.join(imagesDir, randomFile);
