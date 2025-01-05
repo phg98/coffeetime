@@ -1,0 +1,50 @@
+# 최신 LTS 버전의 Node.js 이미지를 사용합니다.
+FROM node:22
+
+# Puppeteer와 관련된 모든 종속 항목 설치
+RUN apt-get update && apt-get install -y \
+  libnss3 \
+  libx11-xcb1 \
+  libxcomposite1 \
+  libxcursor1 \
+  libxdamage1 \
+  libxi6 \
+  libxtst6 \
+  libxrandr2 \
+  libasound2 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libpangocairo-1.0-0 \
+  libgtk-3-0 \
+  libnss3-dev \
+  libxss1 \
+  libgconf-2-4 \
+  libgbm1 \
+  tesseract-ocr \
+  chromium
+
+# 작업 디렉토리 설정
+WORKDIR /usr/src/app
+
+# package.json 및 package-lock.json 복사
+COPY package*.json ./
+
+# 의존성 설치 및 Puppeteer 설치
+RUN npm install
+RUN npm install puppeteer
+
+# 나머지 애플리케이션 코드 복사
+COPY . .
+
+# .env 파일 복사
+COPY .env .env
+
+# Puppeteer가 Chromium 바이너리를 다운로드하도록 설정
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
+ENV TESSDATA_PREFIX=/usr/src/app/node_modules/tesseract.js-core/
+
+# 앱이 실행될 포트 노출
+EXPOSE 3001
+
+# 앱 실행
+CMD [ "node", "index.js" ]

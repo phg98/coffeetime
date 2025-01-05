@@ -7,15 +7,15 @@ const path = require('path');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const { CronJob } = require('cron');
+require('dotenv').config(); // .env 파일에서 환경 변수를 불러옴
 
 const app = express();
 
 app.use(cors());
 
-
 let browser;
 let lastGetImagineTime;
-let ocrResultText;
+let ocrResult;
 
 const httpsAgent = new https.Agent({
     rejectUnauthorized: false,
@@ -24,11 +24,11 @@ const httpsAgent = new https.Agent({
 app.use('/static', express.static(path.join(__dirname)));
 
 app.use('/getLastGetImagineTime', (req, res) => {
-    res.json({ timestamp : lastGetImagineTime });
+    res.json({ timestamp: lastGetImagineTime });
 });
 
 app.use('/getOcrResult', (req, res) => {
-    res.json({ ocrResult : ocrResultText });
+    res.json({ ocrResult });
 });
 
 // puppeteer 브라우저를 오픈한다.
@@ -56,8 +56,17 @@ const performOCR = async (imageBuffer) => {
     try {
         const { data: { text } } = await Tesseract.recognize(imageBuffer, 'kor', {
             logger: m => console.log(m),
+            // 숫자만 인식하도록 설정
+            tessedit_char_whitelist: '0123456789'
         });
-        return text;
+        
+        // 공백 없애기, / 를 7로 변환, !, | 를 1로 변환 
+        let transformedText = text.replace(/ /g, '').replace(/\//g, '7').replace(/!/g, '1').replace(/\|/g, '1'); 
+        
+        // OCR 결과에서 숫자만 추출 
+        const numbersOnly = transformedText.match(/\d+/g)?.join('') || ''; 
+        
+        return numbersOnly;
     } catch (error) {
         console.error('Failed to perform OCR:', error.message);
         return null;
@@ -112,8 +121,44 @@ const getImageScheduler = async () => {
     }
 };
 
+// 로컬 testimages 디렉터리에서 랜덤하게 이미지 파일을 선택하여 OCR을 수행
+const getLocalTestImage = async () => {
+    try {
+        const imagesDir = path.join(__dirname, '..', 'testimages'); // 상위 디렉터리에 위치한 testimages 폴더
+        const files = fs.readdirSync(imagesDir);
+        const randomFile = files[Math.floor(Math.random() * files.length)];
+        const imagePath = path.join(imagesDir, randomFile);
+
+        console.log(`Randomly selected image: ${imagePath}`);
+        
+        const imageBuffer = fs.readFileSync(imagePath);
+        const croppedImagePath = path.join(__dirname, 'downloaded_image_cropped.jpg');
+
+        await cropImage(imageBuffer, croppedImagePath);
+        lastGetImagineTime = new Date().toLocaleString(); // 이미지 저장 시간
+        console.log('Image saved at:', croppedImagePath);
+      
+        const croppedImageBuffer = await fs.promises.readFile(croppedImagePath);
+
+        let ocrResultText = await performOCR(croppedImageBuffer);
+        if (ocrResultText) {
+            ocrResultText = await validateOCRText(ocrResultText, croppedImageBuffer);
+        }
+
+        ocrResult = ocrResultText;
+
+    } catch (error) {
+        console.error('Failed to perform OCR on local test image:', error.message);
+    }
+};
+
 // hanwha701.com 에서 CCTV 이미지를 가져온다.
 const getHanwha701Image = async () => {
+    if (process.env.TEST_OCR === '1') {
+        await getLocalTestImage();
+        return;
+    }
+
     console.log("getHanwha701Image");
     const targetUrl = 'https://www.hanwha701.com';
     let page;
@@ -172,21 +217,8 @@ const getHanwha701Image = async () => {
             const imageBuffer = Buffer.from(base64Data, 'base64');
             const croppedImagePath = path.join(__dirname, 'downloaded_image_cropped.jpg');
 
-            // 테스트용 실행일때에는 ../testimages 폴더의 이미지파일을 읽어서 imageBuffer에 저장하여 사용한다.
-            let testMode = false;
-            if (testMode) {
-                // ../testimages 폴더의 파일중에 랜덤하게 하나를 고른다.
-                const testImageFiles = await fs.promises.readdir(path.join(__dirname, '../testimages'));
-                const randomIndex = Math.floor(Math.random() * testImageFiles.length);
-                const randomImageFile = testImageFiles[randomIndex];
-                console.log('Random image file:', randomImageFile);
-                const testImage = await fs.promises.readFile(path.join(__dirname, '../testimages', randomImageFile));
-                const testImageBuffer = testImage;
-                await cropImage(testImageBuffer, croppedImagePath);
-            } else {
-                await cropImage(imageBuffer, croppedImagePath);
-            }
-            lastGetImagineTime = new Date().toLocaleString();// 이미지 저장 시간
+            await cropImage(imageBuffer, croppedImagePath);
+            lastGetImagineTime = new Date().toLocaleString(); // 이미지 저장 시간
             console.log('Image saved at:', croppedImagePath);
           
             const croppedImageBuffer = await fs.promises.readFile(croppedImagePath);
@@ -196,8 +228,7 @@ const getHanwha701Image = async () => {
                 ocrResultText = await validateOCRText(ocrResultText, croppedImageBuffer);
             }
 
-            const timestamp = new Date().toLocaleString();
-            const base64CroppedImage = croppedImageBuffer.toString('base64');
+            ocrResult = ocrResultText;
 
         } else {
             console.error('No images found on the page');
@@ -213,7 +244,7 @@ const getHanwha701Image = async () => {
     }
 };
 
-const init = () =>{
+const init = () => {
     console.log("Init Server Start !!");
     openHiddenBrowser();
     getImageScheduler();

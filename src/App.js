@@ -34,31 +34,17 @@ function App() {
             console.log('서버 URL:', serverUrl);
             console.log('REACT_APP_SERVER_URL:', process.env.REACT_APP_SERVER_URL);
             try {
-                /*
-                const response = await fetch('http://localhost:3001/images');
-                const data = await response.json();
-                if (response.ok) {
-                    setImageBase64(`data:image/jpeg;base64,${data.base64Image}`);
-                    setImageUpdatedTime(data.timestamp);
-                    setOcrResult(data.ocrResult);
-                    setError(null);
-                    setCurrentNumber(data.ocrResult);
-                } else {
-                    throw new Error(data.error);
-                */
                 const responseImg = await fetch(`${serverUrl}/static/downloaded_image_cropped.jpg`);
                 const responseTime = await fetch(`${serverUrl}/getLastGetImagineTime`);
-                const ocrResult = await fetch(`${serverUrl}/getOcrResult`);
+                const ocrResultResponse = await fetch(`${serverUrl}/getOcrResult`);
                 const data = await responseTime.json();
-                const ocrData = await ocrResult.json();
-
+                const ocrData = await ocrResultResponse.json();
                 if (responseImg.ok) {
-                    // setImageUrl(`${serverUrl}/static/downloaded_image_cropped.jpg?timestamp=${new Date().getTime()}`);
                     setImageBase64(`${serverUrl}/static/downloaded_image_cropped.jpg?timestamp=${new Date().getTime()}`);
-                    setImageUpdatedTime(data?.timestamp ?? 'No Time data'); // 서버에서 받은 시간으로 설정                  
-                    setOcrResult(ocrData?.ocrResult ?? 'No OCR data');                  
+                    setImageUpdatedTime(data?.timestamp ?? 'No Time data'); // 서버에서 받은 시간으로 설정
+                    setOcrResult(ocrData?.ocrResult ?? 'No OCR data'); // OCR 결과 설정
                     setError(null);
-                    setCurrentNumber(ocrData.ocrResult ?? '0');
+                    setCurrentNumber(ocrData.ocrResult);
                 } else {
                     console.error('이미지를 가져오는 데 실패했습니다.');
                     setImageUpdatedTime('No CCTV data');
