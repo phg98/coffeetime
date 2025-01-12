@@ -9,19 +9,14 @@
   - 숫자를 인식   
 
 # 빌드 및 실행 방법
-## 서버 실행
-1. 서버 폴더로 이동
-    - `cd test_server`
-2. 필요 패키지 설치
-    - `npm install -dev`
-3. 서버 실행
-    - `node index.js`
-
-## 프론트 실행
-1. 최상위 폴더로 이동
-    - `cd ..`
-2. 필요 패키지 설치
+1. 필요 패키지 설치
     - `npm install`
-3. 프론트 실행
+2. 환경변수 설정
+    - `copy .env.sample .env`
+    - .env 파일을 열어서 하기 내용을 설정한다.
+      - REACT_APP_SERVER_URL=http://localhost:3001  // 이대로 사용하면 된다.
+      - TEST_OCR=1 // 1이면 크롤링없이 저장된 영상을 사용한다. 0이면 아래 ORDER_DISPLAY_SERVER_URL에 접속하여 크롤링한다.
+      - ORDER_DISPLAY_SERVER_URL=https://www.test.com  // 실제 번호판 서버 주소로 바꿔야 한다.
+4. 프론트 실행
     - `npm start`
-4. 브라우저로 접속 (http://localhost:3000) 하면 프론트 화면이 뜬다.
+5. 자동으로 브라우저가 실행된다. 실행이 안된다면 브라우저로 접속 (http://localhost:3000) 하면 화면이 뜬다.
