@@ -112,8 +112,8 @@ const validateOCRText = async (text, imageBuffer) => {
 // 지금은 테스트용으로 매일 시간무관하게 1분마다 이미지를 가져오도록 설정
 const getImageScheduler = async () => {
     try {
-        //const job = new CronJob('*/5 * 7-17 * * 1-5', getHanwha701Image, null, true, 'Asia/Seoul');
-        const job = new CronJob('*/1 * * * *', getHanwha701Image, null, true, 'Asia/Seoul');
+        //const job = new CronJob('*/5 * 7-17 * * 1-5', getOrderDisplayServerImage, null, true, 'Asia/Seoul');
+        const job = new CronJob('*/1 * * * *', getOrderDisplayServerImage, null, true, 'Asia/Seoul');
         console.log("Start Image Scheduler");
         job.start();
     } catch (error) {
@@ -153,14 +153,14 @@ const getLocalTestImage = async () => {
 };
 
 // hanwha701.com 에서 CCTV 이미지를 가져온다.
-const getHanwha701Image = async () => {
+const getOrderDisplayServerImage = async () => {
     if (process.env.TEST_OCR === '1') {
         await getLocalTestImage();
         return;
     }
 
-    console.log("getHanwha701Image");
-    const targetUrl = 'https://www.hanwha701.com';
+    console.log("getOrderDisplayServerImage");
+    const targetUrl = process.env.ORDER_DISPLAY_SERVER_URL;
     let page;
 
     try {
