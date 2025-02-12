@@ -99,7 +99,10 @@ const transformOCRText = (text) => {
 
 const validateOCRText = async (text, imageBuffer) => {
     if (text.length > 3) {
-        console.log('OCR result is invalid, retrying...');
+        console.log('OCR result is invalid, saving image...');
+        const invalidImagePath = path.join(__dirname, `invalid_image_${new Date().toISOString()}.jpg`);
+        await fs.promises.writeFile(invalidImagePath, imageBuffer);
+        console.log('Invalid image saved at:', invalidImagePath);
         const newText = await performOCR(imageBuffer);
         if (newText) {
             return transformOCRText(newText);
