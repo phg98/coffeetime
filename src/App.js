@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { v4 as uuidv4 } from 'uuid';
+import { registerServiceWorker, showLocalNotification } from './push-manager';
+
 
 function App() {
     const [ticketNumber, setTicketNumber] = useState('');
@@ -13,6 +16,12 @@ function App() {
     const [error, setError] = useState(null);
     const [inputTime, setInputTime] = useState(null); // 숫자를 입력한 시간을 저장하는 상태
     const inputRef = useRef(null);
+
+    const [swRegistration, setSwRegistration] = useState(null);
+ 
+    useEffect(() => {
+      registerServiceWorker().then(setSwRegistration);
+    }, []);
 
     const isNumber = (value) => {
         return !isNaN(value) && value.trim() !== '';
@@ -71,6 +80,7 @@ function App() {
             const now = new Date();
             const waitingTime = getTimeDifferenceInMinutes(inputTime, now);
             notify(`${ticketNumber} 음료가 나왔습니다. (대기시간: ${waitingTime}분)`);
+            handleNotification(ticketNumber, waitingTime);
         }
     }, [ocrResult, ticketNumber, inputTime]);
 
@@ -108,10 +118,37 @@ function App() {
         }
     };
 
+    // const handleNotification = async () => {
+    //     if (swRegistration) {
+    //       const permission = await Notification.requestPermission();
+    //       if (permission === 'granted') {
+    //         showLocalNotification('주문한 커피가 나왔어요!!!', 'ㅡ,.ㅡ;', swRegistration);
+    //       } else {
+    //         console.warn('Notification permission denied');
+    //       }
+    //     } else {
+    //       console.warn('Service Worker registration not found');
+    //     }
+    //   };
+
+      const handleNotification = async (ticketNumber, waitingTime) => {
+        if (swRegistration) {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                showLocalNotification(`${ticketNumber} 음료가 나왔습니다. (대기시간: ${waitingTime}분)`, 'ㅡ,.ㅡ;', swRegistration);
+            } else {
+                console.warn('Notification permission denied');
+            }
+        } else {
+            console.warn('Service Worker registration not found');
+        }
+    };
+    
     return (
         <div style={{ textAlign: 'center' }}>
             <form onSubmit={handleSubmit}>
                 <h1>커피 대기 알림</h1>
+                <button onClick={() => handleNotification('123', 5)}>Show Notification</button>
                 <p>현재 번호: {currentNumber}</p>
                 <p>내 번호: {ticketNumber}</p>
                 <input
