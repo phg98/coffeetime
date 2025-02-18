@@ -10,6 +10,8 @@
     "concurrently": "^9.1.1",
     "cors": "^2.8.5",
     "cron": "^3.3.1",
+    "cross-env": "^7.0.3",
+    "firebase": "^11.2.0",
     "html2canvas": "^1.4.1",
     "puppeteer": "^23.11.1",
     "react": "^18.3.1",
@@ -23,7 +25,7 @@
   },
   "scripts": {
     "start": "concurrently \"npm run bestart\" \"npm run festart\" ",
-    "festart": "react-scripts start",
+    "festart": "cross-env HTTPS=true SSL_CRT_FILE=certificates/server.crt SSL_KEY_FILE=certificates/server.key react-scripts start",
     "bestart": "node test_server/index.js",
     "build": "react-scripts build",
     "test": "react-scripts test",

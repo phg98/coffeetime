@@ -13,12 +13,23 @@ const app = express();
 
 app.use(cors());
 
+// SSL 인증서 파일 경로를 여기에 지정하세요
+const options = {
+    key: fs.readFileSync(process.env.SSL_KEY_FILE),
+    cert: fs.readFileSync(process.env.SSL_CRT_FILE)
+};
+
 let browser;
 let lastGetImagineTime;
 let ocrResult;
 
 const httpsAgent = new https.Agent({
     rejectUnauthorized: false,
+});
+
+// 루트 경로 처리
+app.get('/', (req, res) => {
+    res.send('Hello, this is the root path of the server!');
 });
 
 app.use('/static', express.static(path.join(__dirname)));
@@ -52,12 +63,34 @@ const openHiddenBrowser = async () => {
     }
 };
 
-const performOCR = async (imageBuffer) => {
+// Function to preprocess the image
+const preprocessImage = async (imageBuffer) => {
     try {
-        const { data: { text } } = await Tesseract.recognize(imageBuffer, 'kor', {
-            // logger: m => console.log(m),
+        const image = sharp(imageBuffer);
+
+        // Preprocess image: Grayscale, increase contrast
+        const processedBuffer = await image
+            .greyscale()
+            .normalise()
+            .toBuffer();
+
+        return processedBuffer;
+    } catch (error) {
+        console.error('Failed to preprocess image:', error.message);
+        throw error;
+    }
+};
+
+// Function to perform OCR
+const performEnhancedOCR = async (imageBuffer) => {
+    try {
+        // Perform OCR on preprocessed image
+        const preprocessedBuffer = await preprocessImage(imageBuffer);
+        const { data: { text } } = await Tesseract.recognize(preprocessedBuffer, 'eng', {
+            logger: m => console.log(m),
             // 숫자만 인식하도록 설정
-            tessedit_char_whitelist: '0123456789'
+            tessedit_char_whitelist: '0123456789',
+            psm: 6, // Page Segmentation Mode: Assume a single uniform block of text
         });
         
         // 공백 없애기, / 를 7로 변환, !, | 를 1로 변환 
@@ -68,11 +101,12 @@ const performOCR = async (imageBuffer) => {
         
         return numbersOnly;
     } catch (error) {
-        console.error('Failed to perform OCR:', error.message);
+        console.error('Failed to perform enhanced OCR:', error.message);
         return null;
     }
 };
 
+// Function to crop the image
 const cropImage = async (imageBuffer, outputPath) => {
     try {
         const image = sharp(imageBuffer);
@@ -93,6 +127,30 @@ const cropImage = async (imageBuffer, outputPath) => {
     }
 };
 
+// Function to crop and resize the image
+const cropAndResizeImage = async (imageBuffer, outputPath) => {
+    try {
+        const image = sharp(imageBuffer);
+        const { width, height } = await image.metadata();
+
+        // Define cropping coordinates and size
+        const left = width * 0.3; 
+        const top = height * 0.2; 
+        const cropWidth = width * 0.2; 
+        const cropHeight = height * 0.1; 
+
+        // Crop and scale the image
+        await image
+            .extract({ left: Math.floor(left), top: Math.floor(top), width: Math.floor(cropWidth), height: Math.floor(cropHeight) })
+            .resize({ width: Math.floor(cropWidth / 3), height: Math.floor(cropHeight / 3) }) // Scale down
+            .toFile(outputPath);
+    } catch (error) {
+        console.error('Failed to crop and resize image:', error.message);
+        throw error;
+    }
+};
+
+// Function to transform OCR text
 const transformOCRText = (text) => {
     return text.replace(/ /g, '').replace(/\//g, '7').replace(/!/g, '1').replace(/\|/g, '1');
 };
@@ -151,7 +209,7 @@ const getLocalTestImage = async () => {
       
         const croppedImageBuffer = await fs.promises.readFile(croppedImagePath);
 
-        let ocrResultText = await performOCR(croppedImageBuffer);
+        let ocrResultText = await performEnhancedOCR(croppedImageBuffer);
         if (ocrResultText) {
             ocrResultText = await validateOCRText(ocrResultText, croppedImageBuffer);
         }
@@ -228,13 +286,13 @@ const getOrderDisplayServerImage = async () => {
             const imageBuffer = Buffer.from(base64Data, 'base64');
             const croppedImagePath = path.join(__dirname, 'downloaded_image_cropped.jpg');
 
-            await cropImage(imageBuffer, croppedImagePath);
-            lastGetImagineTime = new Date().toLocaleString(); // 이미지 저장 시간
+            await cropAndResizeImage(imageBuffer, croppedImagePath);
+            lastGetImagineTime = new Date().toLocaleString(); // Record image save time
             console.log('Image saved at:', croppedImagePath);
           
             const croppedImageBuffer = await fs.promises.readFile(croppedImagePath);
 
-            ocrResultText = await performOCR(croppedImageBuffer);
+            let ocrResultText = await performOCR(croppedImageBuffer);
             if (ocrResultText) {
                 ocrResultText = await validateOCRText(ocrResultText, croppedImageBuffer);
             }
@@ -263,6 +321,10 @@ const init = () => {
 
 init();
 
-app.listen(3001, () => {
-    console.log('Server is running on http://localhost:3001');
+//app.listen(3001, () => {
+//    console.log('Server is running on http://localhost:3001');
+//});
+
+https.createServer(options, app).listen(3001, () => {
+    console.log(`HTTPS 서버가 ${process.env.REACT_APP_SERVER_URL} 에서 실행 중입니다.`);
 });
